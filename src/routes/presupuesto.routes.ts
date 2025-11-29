@@ -1,15 +1,16 @@
 import { Router } from "express";
 import { obtenerPresupuestos, obtenerPresupuestoPorId, obtenerPresupuestoPorUsuario, modificarPresupuesto, eliminarPresupuesto, agregarPresupuesto, obtenerPresupuestosPorFecha, obtenerPresupuestosPorEstado } from "../controllers/presupuesto.controllers";
+import jwtMiddleware from "../middleware/jwt.middleware";
 
 const router = Router();
 
-router.get("/", obtenerPresupuestos);
-router.get("/:idPresupuesto", obtenerPresupuestoPorId);
-router.get("/usuario/:idUsuario", obtenerPresupuestoPorUsuario);
-router.get("/fecha/:fecha", obtenerPresupuestosPorFecha);
-router.get("/estado/:estado", obtenerPresupuestosPorEstado);
-router.put("/:idPresupuesto", modificarPresupuesto);
-router.post("/", agregarPresupuesto); 
-router.delete("/:idPresupuesto", eliminarPresupuesto);
+router.get("/", jwtMiddleware, obtenerPresupuestos);
+router.get("/:idPresupuesto", jwtMiddleware, obtenerPresupuestoPorId);
+router.get("/usuario/:idUsuario", jwtMiddleware, obtenerPresupuestoPorUsuario);
+router.get("/fecha/:fecha", jwtMiddleware, obtenerPresupuestosPorFecha);
+router.get("/estado/:estado", jwtMiddleware, obtenerPresupuestosPorEstado);
+router.post("/", jwtMiddleware, agregarPresupuesto); 
+router.put("/:idPresupuesto", jwtMiddleware, modificarPresupuesto);
+router.delete("/:idPresupuesto", jwtMiddleware, eliminarPresupuesto);
 
 export default router;

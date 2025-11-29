@@ -4,9 +4,9 @@ import { ObtenerCategorias } from "../services/categorias.service";
 export const obtenerCategorias = async (req: Request, res: Response) => {
     try {
         const categorias = await ObtenerCategorias();
-        if (categorias){
-            return res.status(200).json(categorias);}
-        else {
+        if (categorias && categorias.length > 0) {
+            return res.status(200).json(categorias);
+        } else {
             return res.status(404).json({ message: "No se encontraron categorías" });
         }
     } catch (error) {

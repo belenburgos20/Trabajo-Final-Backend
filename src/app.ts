@@ -5,6 +5,7 @@ import productosRoutes from "./routes/productos.routes";
 import categoriasRoutes from "./routes/categoria.routes";
 import presupuestosRoutes from "./routes/presupuesto.routes";
 import detallePresupuestoRoutes from "./routes/detallePresupuesto.routes";
+import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 
 const app = express();
 
@@ -16,5 +17,8 @@ app.use("/api/productos", productosRoutes);
 app.use("/api/categorias", categoriasRoutes);
 app.use("/api/presupuestos", presupuestosRoutes);
 app.use("/api/detalle-presupuesto", detallePresupuestoRoutes);
+
+app.use(notFoundHandler);
+app.use(errorHandler);
 
 export default app;
