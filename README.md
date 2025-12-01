@@ -1,6 +1,7 @@
 Proyecto final backend- Oleohidráulica Guardese.
 
 Descripción del proyecto
+
     El proyecto implementa un backend en Node.js+ Express + TypeScript para gestión de presupuestos, productos, usuarios y detalle de presupuesto. A la vez utiliza Sequelize como herramienta para trabajar sobre la base de datos con una estructura de modelos en TypeScript y PostgreSQL en Render como base de datos principal. El sistema incluye autenticación JWT, validación de datos y manejo de errores.
 
 Configuración y Deploy
@@ -14,6 +15,10 @@ Configuración y Deploy
     npm run insert-productos
     npm run build
     npm run start
+
+Diagrama de la base de datos
+
+![Diagrama](diagrama.png)
 
 Rutas principales
 
@@ -77,7 +82,8 @@ Contenido .env
         # Entorno
         NODE_ENV=production
 
-Integrantes del grupo
+Integrantes del grupo:
+
     -Burgos, Belén.
     -Guardese, Luciano.
     -Hubert, Noelia.
