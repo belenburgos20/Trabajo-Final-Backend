@@ -4,10 +4,18 @@ Descripción del proyecto
 
     El proyecto implementa un backend en Node.js+ Express + TypeScript para gestión de presupuestos, productos, usuarios y detalle de presupuesto. A la vez utiliza Sequelize como herramienta para trabajar sobre la base de datos con una estructura de modelos en TypeScript y PostgreSQL en Render como base de datos principal. El sistema incluye autenticación JWT, validación de datos y manejo de errores.
 
-Configuración y Deploy
+Diagrama de la base de datos
+
+![diagrama](diagrama/diagrama-back.png)
+
+---
+
+Deploy en Render 
+- https://trabajo-final-backend-9l6v.onrender.com
+
+ Configuración y Deploy (local)
 
     git clone https://github.com/belenburgos20/Trabajo-Final-Backend.git
-
     cd Trabajo-Final-Backend
 
     npm install
@@ -15,12 +23,8 @@ Configuración y Deploy
     npm run insert-productos
     npm run build
     npm run start
-
-Diagrama de la base de datos
-
-![diagrama](diagrama/diagrama-back.png)
-
-Rutas principales
+--- 
+ Rutas principales
 
     Usuarios:
         POST        /api/usuarios/
@@ -58,7 +62,7 @@ Rutas principales
         PUT         /api/detallePresupuesto/:idDetalle
         DELETE      /api/detallePresupuesto/:idDetalle
 
-    A continuación se adjunta un link de la colección en Postman para la prueba de rutas: 
+A continuación se adjunta un link de la colección en Postman para la prueba de rutas: 
     https://www.postman.com/ds6666-7215/workspace/proyecto-final/collection/39847383-dc410020-40f8-499f-818b-73d89f90443b?action=share&creator=39847383
 
 Contenido .env
@@ -81,6 +85,9 @@ Contenido .env
 
         # Entorno
         NODE_ENV=production
+
+Manejo de tableros en Trello para la división de tareas. Cronograma/Sprint
+- https://trello.com/b/MuVdiLr8/mi-tablero-de-trello
 
 Integrantes del grupo:
 
