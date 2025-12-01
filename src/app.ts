@@ -1,0 +1,26 @@
+import express from "express";
+import cors from "cors";
+import usuariosRoutes from "./routes/usuarios.routes";
+import productosRoutes from "./routes/productos.routes";
+import presupuestosRoutes from "./routes/presupuesto.routes";
+import detallePresupuestoRoutes from "./routes/detallePresupuesto.routes";
+import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
+
+const app = express();
+
+app.use(cors());
+app.use(express.json());
+
+app.get("/", (req, res) => {
+  res.json({ message: "Servidor funcionando correctamente." });
+});
+
+app.use("/api/usuarios", usuariosRoutes);
+app.use("/api/productos", productosRoutes);
+app.use("/api/presupuestos", presupuestosRoutes);
+app.use("/api/detalle-presupuesto", detallePresupuestoRoutes);
+
+app.use(notFoundHandler);
+app.use(errorHandler);
+
+export default app;
