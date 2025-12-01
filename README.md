@@ -18,7 +18,7 @@ Configuración y Deploy
 
 Diagrama de la base de datos
 
-![Diagrama](diagrama.png)
+![diagrama](diagrama/diagrama-back.png)
 
 Rutas principales
 
