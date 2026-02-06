@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import db from "../config/db";
+import db, { sequelize } from "../config/db";
 import { Presupuesto } from "../models/presupuesto.models";
 import { detallePresupuesto } from "../models/detallePresupuesto.models";
 import { ObtenerPresupuestos } from "../services/presupuesto.service";
@@ -91,54 +91,51 @@ export const obtenerPresupuestos = async (req: Request, res: Response) => {
   }
 };
 export const obtenerPresupuestoPorId = async (req: Request, res: Response) => {
-  const idPresupuesto = parseInt(req.params.idPresupuesto, 10);
+  const idPresupuesto = Number(req.params.idPresupuesto);
   try {
-    if (presupuestos.length === 0) {
-      await inicializarPresupuestos();
-    }
-
-    let presupuesto = presupuestos.find(
-      (p) => p.idPresupuesto === idPresupuesto,
+    const presupuestoResult= await db.query(
+      `SELECT id, fecha_creacion, estado
+       FROM presupuestos
+       WHERE id = $1`,
+      [idPresupuesto]
     );
-    if (!presupuesto) {
-      const presupuestosServicio = await ObtenerPresupuestos();
-      const presupuestoData = presupuestosServicio.find(
-        (p: any) => p.idPresupuesto === idPresupuesto,
-      );
 
-      if (presupuestoData) {
-        const detallesServicio = await obtenerDetallesPresupuesto();
-        const detallesDelPresupuesto = detallesServicio
-          .filter((d: any) => d.idPresupuesto === idPresupuesto)
-          .map(
-            (d: any) =>
-              new detallePresupuesto(
-                d.idDetallePresupuesto,
-                d.idPresupuesto,
-                d.idProducto,
-                d.cantidad,
-                d.precio,
-              ),
-          );
-
-        presupuesto = new Presupuesto(
-          presupuestoData.idPresupuesto,
-          detallesDelPresupuesto,
-          presupuestoData.idUsuario,
-          new Date(presupuestoData.fecha),
-          presupuestoData.montoTotal,
-          new Date(presupuestoData.fechaEntrega),
-          presupuestoData.estado,
-        );
-      }
-    }
-
-    if (presupuesto) {
-      presupuesto.montoTotal = calcularMontoTotal(presupuesto.detalle);
-      return res.status(200).json(presupuesto);
-    } else {
+    if (presupuestoResult.rows.length === 0) {
       return res.status(404).json({ message: "Presupuesto no encontrado" });
     }
+    const detallesResult = await db.query(
+        `
+        SELECT 
+          dp.iddetallepresupuesto,
+          p.nombre AS nombre_producto,
+          dp.cantidad,
+          dp.precio,
+          (dp.cantidad * dp.precio) AS total_producto
+        FROM detalles_presupuesto dp
+        JOIN productos p ON p.idproducto = dp.idproducto
+        WHERE dp.idpresupuesto = $1
+        `,
+        [idPresupuesto]
+      );
+      const montoTotal= detallesResult.rows.reduce(
+        (acc, item) => acc + Number(item.total_producto),
+        0
+      );
+
+    return res.status(200).json({
+      idPresupuesto,
+      fecha: presupuestoResult.rows[0].fecha_creacion,
+      estado: presupuestoResult.rows[0].estado,
+      detalle: detallesResult.rows.map((d) => ({
+        idDetallePresupuesto: d.idDetallePresupuesto,
+        nombreProducto: d.nombre_producto,
+        cantidad: d.cantidad,
+        precioUnitario: Number(d.precio),
+        totalProducto: Number(d.total_producto),
+      })),
+      montoTotal,
+    });
+    
   } catch (error) {
     console.error("Error al obtener el presupuesto:", error);
     return res.status(500).json({ message: "Error al obtener el presupuesto" });
@@ -148,25 +145,19 @@ export const obtenerPresupuestoPorUsuario = async (
   req: Request,
   res: Response,
 ) => {
-  const idUsuario = parseInt(req.params.idUsuario, 10);
+  const idUsuario = Number(req.params.idUsuario);
   try {
-    const presupuestos = await db.query(
-      `SELECT * FROM presupuestos WHERE idusuario = $1`,
+    const result = await db.query(
+      `SELECT id, nombre, descripcion, fecha_creacion, monto_total, estado
+       FROM presupuestos
+       WHERE idUsuario = $1
+       ORDER BY fecha_creacion DESC`,
       [idUsuario],
     );
-
-    if (presupuestos.rows.length > 0) {
-      return res.status(200).json(presupuestos.rows);
-    }
-
-    return res.status(404).json({
-      message: "No se encontraron presupuestos para este usuario",
-    });
+      return res.status(200).json(result.rows);
   } catch (error) {
-    console.error("Error al obtener los presupuestos por usuario:", error);
-    return res.status(500).json({
-      message: "Error al obtener los presupuestos por usuario",
-    });
+      console.error("Error al obtener presupuestos:", error);
+      return res.status(404).json({ message: "No se encontraron presupuestos para este usuario" });
   }
 };
 export const modificarPresupuesto = async (req: Request, res: Response) => {
@@ -200,90 +191,41 @@ export const modificarPresupuesto = async (req: Request, res: Response) => {
 };
 export const agregarPresupuesto = async (req: Request, res: Response) => {
   try {
-    const { idUsuario, fechaEntrega, estado, productos } = req.body;
+    const { idUsuario, fechaEntrega, estado, detalle } = req.body;
     if (!idUsuario) {
       return res.status(400).json({ message: "El idUsuario es requerido" });
     }
 
-    if (!fechaEntrega) {
-      return res.status(400).json({ message: "La fechaEntrega es requerida" });
+    if (!detalle || !Array.isArray(detalle) || detalle.length === 0) {
+      return res.status(400).json({ message: "El detalle del presupuesto es requerido y debe ser un array no vacío" });
     }
-
-    let detallesPresupuesto: detallePresupuesto[] = [];
-
-    if (productos && Array.isArray(productos) && productos.length > 0) {
-      const { obtenerProductos } =
-        await import("../services/productos.service");
-      const productosDisponibles = await obtenerProductos();
-
-      let idDetalleActual = 1;
-      const detallesExistentes = await obtenerDetallesPresupuesto();
-      if (detallesExistentes.length > 0) {
-        idDetalleActual =
-          Math.max(
-            ...detallesExistentes.map((d: any) => d.idDetallePresupuesto),
-          ) + 1;
+    const [result]: any =await sequelize.query(
+      `INSERT INTO presupuestos( idusuario, estado)
+      VALUES (:idUsuario, :estado)
+      RETURNING id`,
+      {
+        replacements: { idUsuario, estado: estado || "Pendiente" },
       }
-
-      for (const productoSeleccionado of productos) {
-        const { idProducto, cantidad } = productoSeleccionado;
-
-        if (!idProducto || !cantidad || cantidad <= 0) {
-          continue;
-        }
-
-        const producto = productosDisponibles.find(
-          (p: any) => p.id === idProducto,
-        );
-        if (!producto || !producto.precio) {
-          continue;
-        }
-
-        if (producto.stock < cantidad) {
-          continue;
-        }
-
-        const nuevoDetalle = new detallePresupuesto(
-          idDetalleActual++,
-          idPresupuestoActual,
-          idProducto,
-          cantidad,
-          producto.precio,
-        );
-
-        detallesPresupuesto.push(nuevoDetalle);
-      }
-
-      if (detallesPresupuesto.length === 0) {
-        return res.status(400).json({
-          message:
-            "No se pudieron crear detalles válidos con los productos proporcionados",
-        });
-      }
-    }
-
-    const montoTotal = calcularMontoTotal(detallesPresupuesto);
-    detallesPresupuesto.forEach((detalle) => {
-      detalle.idPresupuesto = idPresupuestoActual;
-    });
-
-    const nuevoPresupuesto = new Presupuesto(
-      idPresupuestoActual++,
-      detallesPresupuesto,
-      idUsuario,
-      new Date(),
-      montoTotal,
-      new Date(fechaEntrega),
-      estado || "Pendiente",
     );
 
-    presupuestos.push(nuevoPresupuesto);
-
-    return res.status(201).json({
-      message: "Presupuesto creado exitosamente",
-      presupuesto: nuevoPresupuesto,
-    });
-  } catch (error) {
+   const idPresupuesto= result[0].id;
+   for (const item of detalle) {
+    if (!item.idProducto || !item.cantidad || item.cantidad <= 0) continue;
+    await sequelize.query(
+      `INSERT INTO detalles_presupuesto( idPresupuesto, idProducto, cantidad, precio)
+      VALUES (:idPresupuesto, :idProducto, :cantidad, :precio)`,
+      {
+        replacements: {
+          idPresupuesto,
+          idProducto: item.idProducto,
+          cantidad: item.cantidad,
+          precio: item.precioUnitario,
+        },
+      }
+    );
+    return res.status(201).json({ message: "Presupuesto creado exitosamente", idPresupuesto });
+  }
+  }catch (error) {
     console.error("Error al agregar el presupuesto:", error);
     return res.status(500).json({ message: "Error al agregar el presupuesto" });
   }
