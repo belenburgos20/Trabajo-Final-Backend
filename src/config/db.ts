@@ -35,7 +35,7 @@ if (databaseUrl) {
 
 export { sequelize };
 
-const pool = new Pool({
+export const pool = new Pool({
   connectionString:
     databaseUrl ||
     `postgresql://${process.env.DB_USER}:${process.env.DB_PASS}@${process.env.DB_HOST}:${process.env.DB_PORT || 5432}/${process.env.DB_NAME}`,
