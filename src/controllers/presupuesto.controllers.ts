@@ -398,7 +398,7 @@ export const generarPDFPresupuesto = async (req: Request, res: Response) => {
       "Content-Disposition",
       `attachment; filename=presupuesto_${idPresupuesto}.pdf`,
     );
-    res.send(pdfBuffer);
+    res.send(Buffer.from(pdfBuffer));
   } catch (error) {
     console.error("Error al generar el PDF del presupuesto:", error);
     return res.status(500).json({ message: "Error al generar el PDF" });
