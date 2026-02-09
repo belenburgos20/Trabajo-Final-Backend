@@ -5,6 +5,8 @@ import { detallePresupuesto } from "../models/detallePresupuesto.models";
 import { ObtenerPresupuestos } from "../services/presupuesto.service";
 import { obtenerDetallesPresupuesto } from "../services/detallePresupuesto.service";
 import { pool } from "../config/db";
+import puppeteer from "puppeteer";
+import fs from "fs";
 
 let presupuestos: Presupuesto[] = [];
 let idPresupuestoActual = 1;
@@ -87,7 +89,7 @@ export const obtenerPresupuestoPorId = async (req: Request, res: Response) => {
         precioUnitario: Number(d.precio),
         totalProducto: Number(d.total_producto),
       })),
-      montoTotal: montoTotal,
+      montoTotal: Number(presupuestoResult.rows[0].monto_total),
     });
   } catch (error) {
     console.error("Error al obtener el presupuesto:", error);
@@ -270,5 +272,135 @@ export const obtenerPresupuestosPorFecha = async (
   } catch (error) {
     console.error("Error al obtener presupuestos:", error);
     return res.status(500).json({ message: "Error al obtener presupuestos" });
+  }
+};
+
+export const generarPDFPresupuesto = async (req: Request, res: Response) => {
+  const idPresupuesto = Number(req.params.idPresupuesto);
+
+  console.log("ID del presupuesto recibido:", idPresupuesto);
+
+  try {
+    // Obtener datos del presupuesto
+    console.log("Ejecutando consulta para obtener el presupuesto...");
+    const presupuestoResult = await db.query(
+      `SELECT id as idpresupuesto, fecha_creacion, estado, monto_total
+       FROM presupuestos
+       WHERE id = $1`,
+      [idPresupuesto],
+    );
+
+    console.log(
+      "Resultado de la consulta del presupuesto:",
+      presupuestoResult.rows,
+    );
+
+    if (presupuestoResult.rows.length === 0) {
+      console.log("Presupuesto no encontrado");
+      return res.status(404).json({ message: "Presupuesto no encontrado" });
+    }
+
+    console.log(
+      "Ejecutando consulta para obtener los detalles del presupuesto...",
+    );
+    const detallesResult = await db.query(
+      `SELECT dp.iddetallepresupuesto, p.nombre AS nombre_producto, dp.cantidad, dp.precio, (dp.cantidad * dp.precio) AS total_producto
+       FROM detalles_presupuesto dp
+       JOIN productos p ON p.idproducto = dp.idproducto
+       WHERE dp.idpresupuesto = $1`,
+      [idPresupuesto],
+    );
+
+    console.log("Resultado de la consulta de detalles:", detallesResult.rows);
+
+    const presupuesto = {
+      idPresupuesto,
+      fecha: presupuestoResult.rows[0].fecha_creacion,
+      estado: presupuestoResult.rows[0].estado,
+      montoTotal: Number(presupuestoResult.rows[0].monto_total),
+      detalle: detallesResult.rows.map((d) => ({
+        idDetallePresupuesto: d.iddetallepresupuesto,
+        nombreProducto: d.nombre_producto,
+        cantidad: d.cantidad,
+        precioUnitario: Number(d.precio),
+        totalProducto: Number(d.total_producto),
+      })),
+    };
+
+    console.log("Datos del presupuesto procesados:", presupuesto);
+
+    // Generar HTML para el PDF
+    const htmlContent = `
+      <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; }
+            h1 { text-align: center; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #f2f2f2; }
+          </style>
+        </head>
+        <body>
+          <h1>Presupuesto #${presupuesto.idPresupuesto}</h1>
+          <p><strong>Fecha:</strong> ${presupuesto.fecha}</p>
+          <p><strong>Estado:</strong> ${presupuesto.estado}</p>
+          <p><strong>Monto Total:</strong> $${presupuesto.montoTotal.toFixed(2)}</p>
+          <h2>Detalle</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Producto</th>
+                <th>Cantidad</th>
+                <th>Precio Unitario</th>
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${presupuesto.detalle
+                .map(
+                  (item) => `
+                  <tr>
+                    <td>${item.nombreProducto}</td>
+                    <td>${item.cantidad}</td>
+                    <td>$${item.precioUnitario.toFixed(2)}</td>
+                    <td>$${item.totalProducto.toFixed(2)}</td>
+                  </tr>
+                `,
+                )
+                .join("")}
+            </tbody>
+          </table>
+        </body>
+      </html>
+    `;
+
+    console.log("HTML generado para el PDF:", htmlContent);
+
+    // Generar el PDF con Puppeteer
+    const browser = await puppeteer.launch();
+    const page = await browser.newPage();
+    await page.setContent(htmlContent);
+    const pdfBuffer = await page.pdf({ format: "A4" });
+    await browser.close();
+
+    console.log("PDF generado correctamente");
+
+    // Guardar el PDF generado en el servidor para depuración
+    const fs = require("fs");
+    const filePath = `./presupuesto_${idPresupuesto}.pdf`;
+    fs.writeFileSync(filePath, pdfBuffer);
+    console.log(`PDF guardado en el servidor: ${filePath}`);
+
+    // Configurar la respuesta
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=presupuesto_${idPresupuesto}.pdf`,
+    );
+    res.send(pdfBuffer);
+  } catch (error) {
+    console.error("Error al generar el PDF del presupuesto:", error);
+    return res.status(500).json({ message: "Error al generar el PDF" });
   }
 };
