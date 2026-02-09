@@ -312,12 +312,29 @@ export const generarPDFPresupuesto = async (req: Request, res: Response) => {
     );
 
     console.log("Resultado de la consulta de detalles:", detallesResult.rows);
+        const clienteResult = await db.query(
+      `SELECT u.nombre AS nombre, u.direccion, u.telefono, u.email
+       FROM presupuestos p
+       JOIN usuarios u ON u.idusuario = p.idUsuario
+       WHERE p.id = $1`,
+      [idPresupuesto],
+    );
+    if (clienteResult.rows.length === 0) {
+      console.log("Cliente no encontrado para el presupuesto");
+      return res.status(404).json({ message: "Cliente no encontrado" });
+    }
 
     const presupuesto = {
       idPresupuesto,
       fecha: presupuestoResult.rows[0].fecha_creacion,
       estado: presupuestoResult.rows[0].estado,
       montoTotal: Number(presupuestoResult.rows[0].monto_total),
+      cliente:{
+        nombre: clienteResult.rows[0].nombre,
+        direccion: clienteResult.rows[0].direccion,
+        telefono: clienteResult.rows[0].telefono,
+        email: clienteResult.rows[0].email,
+      },
       detalle: detallesResult.rows.map((d) => ({
         idDetallePresupuesto: d.iddetallepresupuesto,
         nombreProducto: d.nombre_producto,
@@ -332,46 +349,206 @@ export const generarPDFPresupuesto = async (req: Request, res: Response) => {
     // Generar HTML para el PDF
     const htmlContent = `
       <html>
-        <head>
-          <style>
-            body { font-family: Arial, sans-serif; }
-            h1 { text-align: center; }
-            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-            th { background-color: #f2f2f2; }
-          </style>
-        </head>
-        <body>
-          <h1>Presupuesto #${presupuesto.idPresupuesto}</h1>
-          <p><strong>Fecha:</strong> ${presupuesto.fecha}</p>
-          <p><strong>Estado:</strong> ${presupuesto.estado}</p>
-          <p><strong>Monto Total:</strong> $${presupuesto.montoTotal.toFixed(2)}</p>
-          <h2>Detalle</h2>
-          <table>
-            <thead>
+      <head>
+        <meta charset="UTF-8" />
+        
+      </head>
+      <style>
+        body {
+          font-family: "Arial", sans-serif;
+          margin: 45px;
+          color: #2b2b2b;
+          font-size: 14px;
+        }
+
+        .top {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          padding-bottom: 15px;
+          border-bottom: 3px solid #4b2c82;
+          margin-bottom: 25px;
+        }
+
+        .titulo {
+          font-size: 30px;
+          font-weight: 700;
+          letter-spacing: 1px;
+          color: #4b2c82;
+        }
+
+        .empresa {
+          margin-top: 8px;
+          font-size: 13px;
+          line-height: 1.6;
+          color: #555;
+        }
+
+        .logo {
+          width: 130px;
+          object-fit: contain;
+        }
+        .bloque {
+          display: flex;
+          justify-content: space-between;
+          gap: 20px;
+          background: #f6f6f9;
+          border-left: 5px solid #4b2c82;
+          padding: 18px;
+          margin-top: 30px;
+          border-radius: 6px;
+        }
+
+        .bloque > div {
+          width: 50%;
+          font-size: 14px;
+          line-height: 1.6;
+        }
+
+        .bloque h3 {
+          margin: 0 0 8px 0;
+          font-size: 15px;
+          color: #4b2c82;
+        }
+
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-top: 35px;
+        }
+
+        thead th {
+          background: #4b2c82;
+          color: #fff;
+          padding: 10px;
+          font-size: 13px;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+
+        tbody td {
+          padding: 10px;
+          border-bottom: 1px solid #ddd;
+          font-size: 14px;
+        }
+
+        tbody tr:nth-child(even) {
+          background-color: #fafafa;
+        }
+
+        .right {
+          text-align: right;
+        }
+
+        .totales {
+          display: flex;
+          justify-content: flex-end;
+          margin-top: 25px;
+        }
+
+        .totales table {
+          width: 45%;
+          border: 2px solid #4b2c82;
+          border-radius: 6px;
+          overflow: hidden;
+        }
+
+        .totales th {
+          background: #f1eef9;
+          padding: 12px;
+          font-size: 15px;
+          text-align: left;
+          color: #4b2c82;
+        }
+
+        .totales td {
+          padding: 12px;
+          font-size: 16px;
+          font-weight: bold;
+          text-align: right;
+        }
+        .footer {
+          margin-top: 45px;
+          font-size: 13px;
+          color: #555;
+          line-height: 1.8;
+        }
+      </style>
+      <body>
+        <!-- Encabezado -->
+        <div class="top">
+          <div>
+            <div class="titulo">PRESUPUESTO</div>
+            <div class="empresa">
+              Oleohidráulica Guardese<br />
+              Bravard 1469 – Bahía Blanca<br />
+              Tel: 0291 517-1986<br />
+              claudioguardes@hotmail.com
+            </div>
+          </div>
+
+          <img
+            src="https://res.cloudinary.com/dzj8q3l6n/image/upload/v1700000000/guardese-logo.png"
+            class="logo"
+          />
+        </div>
+
+        <!-- Cliente / Presupuesto -->
+        <div class="bloque">
+          <div>
+            <h3>Cliente</h3>
+            ${presupuesto.cliente.nombre}<br />
+            ${presupuesto.cliente.direccion}<br />
+            Tel: ${presupuesto.cliente.telefono}<br />
+            ${presupuesto.cliente.email}
+          </div>
+
+          <div>
+            <h3>N° de Presupuesto</h3>
+            ${presupuesto.idPresupuesto}<br /><br />
+            <strong>Fecha:</strong> ${presupuesto.fecha}
+          </div>
+        </div>
+
+        <!-- Tabla -->
+        <table>
+          <thead>
+            <tr>
+              <th>Pos.</th>
+              <th>Descripción</th>
+              <th>Cant.</th>
+              <th>Precio Unit.</th>
+              <th>Importe</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${presupuesto.detalle.map((item, index) => `
               <tr>
-                <th>Producto</th>
-                <th>Cantidad</th>
-                <th>Precio Unitario</th>
-                <th>Total</th>
+                <td>${index + 1}</td>
+                <td>${item.nombreProducto}</td>
+                <td class="right">${item.cantidad}</td>
+                <td class="right">$${item.precioUnitario.toFixed(2)}</td>
+                <td class="right">$${item.totalProducto.toFixed(2)}</td>
               </tr>
-            </thead>
-            <tbody>
-              ${presupuesto.detalle
-                .map(
-                  (item) => `
-                  <tr>
-                    <td>${item.nombreProducto}</td>
-                    <td>${item.cantidad}</td>
-                    <td>$${item.precioUnitario.toFixed(2)}</td>
-                    <td>$${item.totalProducto.toFixed(2)}</td>
-                  </tr>
-                `,
-                )
-                .join("")}
-            </tbody>
+            `).join("")}
+          </tbody>
+        </table>
+
+        <!-- Totales -->
+        <div class="totales">
+          <table>
+            <tr>
+              <th>IMPORTE TOTAL</th>
+              <th class="right">$${presupuesto.montoTotal.toFixed(2)}</th>
+            </tr>
           </table>
-        </body>
+        </div>
+
+        <div class="footer">
+          Atentamente,<br />
+          Oleohidráulica Guardese
+        </div>
+      </body>
       </html>
     `;
 
