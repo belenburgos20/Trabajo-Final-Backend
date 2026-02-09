@@ -15,8 +15,6 @@ const actualizarMontoTotalPresupuesto = (
     (total, detalle) => total + detalle.cantidad * detalle.precio,
     0,
   );
-  // TODO: Update the budget total amount in the presupuesto controller or service
-  console.log(`Monto total para presupuesto ${idPresupuesto}: ${montoTotal}`);
 };
 
 const inicializarDetalles = async () => {
@@ -58,7 +56,6 @@ export const obtenerDetallesPorPresupuesto = async (
     }
     return res.status(200).json(filtrados);
   } catch (error) {
-    console.error("Error al obtener detalles por presupuesto:", error);
     return res
       .status(500)
       .json({ mensaje: "Error al obtener detalles del presupuesto" });
@@ -113,7 +110,6 @@ export const agregarDetallePresupuesto = async (
     await actualizarMontoTotalPresupuesto(idPresupuesto, detallesCreados); // Pasar ambos argumentos requeridos
     return res.status(201).json(detallesCreados);
   } catch (error) {
-    console.error("Error al agregar detalles al presupuesto:", error);
     return res
       .status(500)
       .json({ mensaje: "Error al agregar detalles al presupuesto" });

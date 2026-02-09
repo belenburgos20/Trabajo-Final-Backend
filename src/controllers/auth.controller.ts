@@ -16,14 +16,11 @@ export const loginUsuario = async (req: Request, res: Response) => {
 
   try {
     const mail = await getUsuarioBymail(email);
-    console.log("Resultado de getUsuarioBymail:", mail);
 
     if (!mail) {
-      console.log("Usuario no encontrado para el email:", email);
       return res.status(404).json({ message: "Credenciales inválidas" });
     }
     if (mail.password !== password) {
-      console.log("Contraseña incorrecta para el usuario:", mail.email);
       return res.status(401).json({ message: "Credenciales incorrectas" });
     }
 
@@ -36,20 +33,12 @@ export const loginUsuario = async (req: Request, res: Response) => {
       { expiresIn: JWT_EXPIRES_IN },
     );
 
-    console.log("Token generado:", token);
-    console.log("Usuario autenticado correctamente:", {
-      id: mail.idUsuario,
-      email: mail.email,
-      esAdmin: mail.esAdmin,
-    });
-
     return res.status(200).json({
       id: mail.idUsuario, // Incluir el ID del usuario en la respuesta
       token,
       esAdmin: mail.esAdmin, // Incluir la propiedad esAdmin en la respuesta
     });
   } catch (error) {
-    console.error("Error en loginUsuario:", error);
     return res.status(500).json({ message: "Error" });
   }
 };

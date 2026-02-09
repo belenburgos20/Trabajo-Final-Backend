@@ -12,7 +12,6 @@ export const ObtenerUsuarios = async (req: Request, res: Response) => {
     const usuarios = await db.query("SELECT * FROM usuarios");
     return res.status(200).json(usuarios.rows);
   } catch (error) {
-    console.error("Error al obtener los usuarios:", error);
     return res.status(500).json({ message: "Error al obtener los usuarios" });
   }
 };
@@ -45,7 +44,6 @@ export const obtenerUsuarioPorId = async (req: Request, res: Response) => {
       return res.status(404).json({ message: "Usuario no encontrado" });
     }
   } catch (error) {
-    console.error("Error al obtener el usuario:", error);
     return res.status(500).json({ message: "Error al obtener el usuario" });
   }
 };
@@ -77,9 +75,6 @@ export const crearUsuario = async (req: Request, res: Response) => {
     );
 
     if (emailExistente.rows.length > 0) {
-      console.log(
-        "Error: El correo electrónico ya está registrado. Por favor, inicie sesión o use otro correo.",
-      ); // Log para depuración
       return res.status(400).json({
         message:
           "El correo electrónico ya está registrado. Por favor, inicie sesión o use otro correo.",
@@ -133,7 +128,6 @@ export const crearUsuario = async (req: Request, res: Response) => {
       token,
     });
   } catch (error) {
-    console.error("Error al crear el usuario:", error);
     return res.status(500).json({ message: "Error al crear el usuario" });
   }
 };
@@ -142,9 +136,6 @@ export const modificarUsuario = async (req: Request, res: Response) => {
 
   // Si el ID no es un número válido, devolver un error
   if (isNaN(id)) {
-    console.error(
-      "El ID proporcionado no es válido o no se envió correctamente.",
-    );
     return res
       .status(400)
       .json({ message: "El ID del usuario debe ser un número válido." });
@@ -197,7 +188,6 @@ export const modificarUsuario = async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    console.error("Error al actualizar el usuario:", error);
     return res.status(500).json({ message: "Error al actualizar el usuario" });
   }
 };
@@ -217,7 +207,6 @@ export const eliminarUsuario = async (req: Request, res: Response) => {
 
     return res.status(404).json({ message: "Usuario no encontrado" });
   } catch (error) {
-    console.error("Error al eliminar el usuario:", error);
     return res.status(500).json({ message: "Error al eliminar el usuario" });
   }
 };
@@ -228,7 +217,6 @@ export const logout = async (req: Request, res: Response) => {
   try {
     return res.status(200).json({ message: "Sesión cerrada" });
   } catch (error) {
-    console.error("Error al cerrar sesión:", error);
     return res.status(500).json({ message: "Error al cerrar sesión" });
   }
 };

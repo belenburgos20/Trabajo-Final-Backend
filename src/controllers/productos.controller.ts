@@ -31,7 +31,6 @@ export const obtenerProductoPorCodigo = async (req: Request, res: Response) => {
       res.status(404).json({ mensaje: "Producto no encontrado" });
     }
   } catch (error) {
-    console.error("Error al obtener el producto:", error);
     res.status(500).json({ mensaje: "Error al obtener el producto" });
   }
 };
@@ -52,7 +51,6 @@ export const obtenerProductoPorCategoria = async (
     );
     res.json(productos.rows);
   } catch (error) {
-    console.error("Error al obtener los productos por categoría:", error);
     res.status(500).json({
       mensaje: "Error al obtener los productos por categoría",
     });
@@ -72,7 +70,6 @@ export const obtenerProductoPorNombre = async (req: Request, res: Response) => {
       res.status(404).json({ mensaje: "Producto no encontrado" });
     }
   } catch (error) {
-    console.error("Error al obtener productos:", error);
     res.status(500).json({ mensaje: "Error al obtener productos" });
   }
 };
@@ -80,15 +77,6 @@ export const obtenerProductoPorNombre = async (req: Request, res: Response) => {
 export const modificarProducto = async (req: Request, res: Response) => {
   const idProducto = parseInt(req.params.idproducto);
   const { nombre, descripcion, precio, stock, id_categoria } = req.body;
-
-  console.log("Datos recibidos para modificar producto:", {
-    idProducto,
-    nombre,
-    descripcion,
-    precio,
-    stock,
-    id_categoria,
-  });
 
   // Validar que al menos uno de los campos esté presente
   if (!nombre && !descripcion && !precio && !stock && !id_categoria) {
@@ -108,8 +96,6 @@ export const modificarProducto = async (req: Request, res: Response) => {
       console.log("Error: Producto no encontrado con id:", idProducto);
       return res.status(404).json({ mensaje: "Producto no encontrado" });
     }
-
-    console.log("Producto encontrado:", productoExistente.rows[0]);
 
     // Construir dinámicamente la consulta de actualización
     const campos = [];
@@ -140,19 +126,13 @@ export const modificarProducto = async (req: Request, res: Response) => {
 
     const query = `UPDATE productos SET ${campos.join(", ")} WHERE idproducto = $${valores.length} RETURNING *`;
 
-    console.log("Consulta de actualización:", query);
-    console.log("Valores de la consulta:", valores);
-
     const resultado = await db.query(query, valores);
-
-    console.log("Producto actualizado:", resultado.rows[0]);
 
     res.json({
       producto: resultado.rows[0],
       mensaje: "Producto modificado correctamente",
     });
   } catch (error) {
-    console.error("Error al modificar el producto:", error);
     res.status(500).json({ mensaje: "Error al modificar el producto" });
   }
 };
@@ -173,17 +153,10 @@ export const eliminarProducto = async (req: Request, res: Response) => {
       return res.status(404).json({ mensaje: "Producto no encontrado" });
     }
 
-    console.log(
-      "Producto encontrado para eliminar:",
-      productoExistente.rows[0],
-    );
-
     await db.query("DELETE FROM productos WHERE idproducto = $1", [idProducto]);
 
-    console.log("Producto eliminado correctamente con id:", idProducto);
     res.json({ mensaje: "Producto eliminado correctamente" });
   } catch (error) {
-    console.error("Error al eliminar el producto:", error);
     res.status(500).json({ mensaje: "Error al eliminar el producto" });
   }
 };
@@ -191,23 +164,12 @@ export const eliminarProducto = async (req: Request, res: Response) => {
 export const agregarProducto = async (req: Request, res: Response) => {
   const { nombre, descripcion, precio, stock, id_categoria } = req.body;
 
-  console.log("Datos recibidos para agregar producto:", {
-    nombre,
-    descripcion,
-    precio,
-    stock,
-    id_categoria,
-  });
-
   // Validar que los campos requeridos no sean nulos
   if (!nombre || !precio || !stock || !id_categoria) {
-    console.log("Error: Faltan campos obligatorios para agregar el producto");
-    return res
-      .status(400)
-      .json({
-        mensaje:
-          "Todos los campos requeridos deben estar presentes: nombre, precio, stock, id_categoria",
-      });
+    return res.status(400).json({
+      mensaje:
+        "Todos los campos requeridos deben estar presentes: nombre, precio, stock, id_categoria",
+    });
   }
 
   try {
@@ -217,14 +179,11 @@ export const agregarProducto = async (req: Request, res: Response) => {
       [nombre, descripcion, precio, stock, id_categoria],
     );
 
-    console.log("Producto agregado correctamente:", nuevoProducto.rows[0]);
-
     res.json({
       producto: nuevoProducto.rows[0],
       mensaje: "Producto agregado correctamente",
     });
   } catch (error) {
-    console.error("Error al agregar el producto:", error);
     res.status(500).json({ mensaje: "Error al agregar el producto" });
   }
 };
