@@ -98,8 +98,8 @@ export const modificarProducto = async (req: Request, res: Response) => {
     }
 
     // Construir dinámicamente la consulta de actualización
-    const campos = [];
-    const valores = [];
+    const campos: string[] = [];
+    const valores: any[] = [];
 
     if (nombre) {
       campos.push("nombre = $" + (campos.length + 1));
