@@ -2,11 +2,22 @@ import { Request, Response } from "express";
 import { detallePresupuesto } from "../models/detallePresupuesto.models";
 import { obtenerProductos } from "../services/productos.service";
 import { obtenerDetallesPresupuesto } from "../services/detallePresupuesto.service";
-import { actualizarMontoTotalPresupuesto } from "./presupuesto.controllers";
 import { Producto } from "../models/producto.models";
 
 let detalles: detallePresupuesto[] = [];
 let Idactual = 1;
+
+const actualizarMontoTotalPresupuesto = (
+  idPresupuesto: number,
+  detallesPresupuesto: detallePresupuesto[],
+) => {
+  const montoTotal = detallesPresupuesto.reduce(
+    (total, detalle) => total + detalle.cantidad * detalle.precio,
+    0,
+  );
+  // TODO: Update the budget total amount in the presupuesto controller or service
+  console.log(`Monto total para presupuesto ${idPresupuesto}: ${montoTotal}`);
+};
 
 const inicializarDetalles = async () => {
   try {

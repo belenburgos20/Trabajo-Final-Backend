@@ -18,13 +18,19 @@ export const ObtenerUsuarios = async (req: Request, res: Response) => {
 };
 export const obtenerUsuarioPorId = async (req: Request, res: Response) => {
   const idUsuario = parseInt(req.params.id, 10);
-  console.log("ID recibido:", idUsuario);
+
+  // Validar que el ID sea un número válido
+  if (isNaN(idUsuario)) {
+    return res
+      .status(400)
+      .json({ message: "El ID del usuario debe ser un número válido." });
+  }
+
   try {
     const resultado = await db.query(
       "SELECT * FROM usuarios WHERE idusuario = $1",
       [idUsuario],
     );
-    console.log("Resultado de la consulta:", resultado.rows);
     const usuario = resultado.rows[0];
 
     if (usuario) {
@@ -45,8 +51,6 @@ export const obtenerUsuarioPorId = async (req: Request, res: Response) => {
 };
 export const crearUsuario = async (req: Request, res: Response) => {
   const idUsuario = parseInt(req.params.id, 10);
-  console.log("ID recibido:", idUsuario);
-  console.log("Datos recibidos en la solicitud para crear usuario:", req.body);
   try {
     const {
       nombre,
@@ -84,7 +88,7 @@ export const crearUsuario = async (req: Request, res: Response) => {
 
     const nuevoUsuario = await db.query(
       `INSERT INTO usuarios (nombre, email, password, cuit, direccion, telefono, "esAdmin", localidad)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING idusuario AS "idUsuario", nombre, email, cuit, direccion, telefono, "esAdmin", localidad`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING idusuario, nombre, email, cuit, direccion, telefono, "esAdmin", localidad`,
       [
         nombre,
         email,
@@ -96,6 +100,13 @@ export const crearUsuario = async (req: Request, res: Response) => {
         localidad || null,
       ],
     );
+
+    // Verificar si se creó correctamente el usuario
+    if (!nuevoUsuario.rows || nuevoUsuario.rows.length === 0) {
+      return res.status(500).json({
+        message: "Error al crear el usuario. No se devolvió un ID válido.",
+      });
+    }
 
     // Mapear el campo idusuario a id
     const usuarioCreado = {
@@ -128,10 +139,21 @@ export const crearUsuario = async (req: Request, res: Response) => {
 };
 export const modificarUsuario = async (req: Request, res: Response) => {
   const id = parseInt(req.params.id, 10);
+
+  // Si el ID no es un número válido, devolver un error
+  if (isNaN(id)) {
+    console.error(
+      "El ID proporcionado no es válido o no se envió correctamente.",
+    );
+    return res
+      .status(400)
+      .json({ message: "El ID del usuario debe ser un número válido." });
+  }
+
   const {
     nombre,
     email,
-    contraseña,
+    password,
     CUIT,
     direccion,
     telefono,
@@ -140,6 +162,7 @@ export const modificarUsuario = async (req: Request, res: Response) => {
   } = req.body;
 
   try {
+    // Verificar si el usuario existe antes de intentar actualizarlo
     const resultado = await db.query(
       "SELECT * FROM usuarios WHERE idusuario = $1",
       [id],
@@ -150,16 +173,17 @@ export const modificarUsuario = async (req: Request, res: Response) => {
       return res.status(404).json({ message: "Usuario no encontrado" });
     }
 
+    // Realizar la actualización del usuario
     const usuarioActualizado = await db.query(
-      `UPDATE usuarios SET nombre = $1, email = $2, "contraseña" = $3, cuit = $4, direccion = $5, telefono = $6, esadmin = $7, localidad = $8 WHERE idusuario = $9 RETURNING *`,
+      `UPDATE usuarios SET nombre = $1, email = $2, password = $3, cuit = $4, direccion = $5, telefono = $6, "esAdmin" = $7, localidad = $8 WHERE idusuario = $9 RETURNING *`,
       [
         nombre || usuario.nombre,
         email || usuario.email,
-        contraseña || usuario.contraseña,
+        password || usuario.password,
         CUIT || usuario.cuit,
         direccion || usuario.direccion,
         telefono || usuario.telefono,
-        esAdmin || usuario.esadmin,
+        esAdmin || usuario.esAdmin,
         localidad || usuario.localidad,
         id,
       ],
@@ -167,7 +191,10 @@ export const modificarUsuario = async (req: Request, res: Response) => {
 
     return res.status(200).json({
       message: "Usuario actualizado correctamente",
-      usuario: usuarioActualizado.rows[0],
+      usuario: {
+        ...usuarioActualizado.rows[0],
+        id: usuarioActualizado.rows[0].idusuario, // Mapear idusuario a id
+      },
     });
   } catch (error) {
     console.error("Error al actualizar el usuario:", error);

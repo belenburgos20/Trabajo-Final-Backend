@@ -17,7 +17,7 @@ export const obtenerPresupuestos = async (req: Request, res: Response) => {
         u.nombre as nombre_usuario,
         p.fecha_creacion,
         p.estado,
-        COALESCE(SUM(dp.cantidad * dp.precio), 0) AS monto_total
+        p.monto_total
       FROM presupuestos p
       JOIN usuarios u ON u.idusuario = p.idUsuario
       LEFT JOIN detalles_presupuesto dp ON dp.idpresupuesto = p.id
@@ -33,30 +33,30 @@ export const obtenerPresupuestos = async (req: Request, res: Response) => {
         fecha: p.fecha_creacion,
         estado: p.estado,
         montoTotal: Number(p.monto_total),
-        detalle: []
-      }))
+        detalle: [],
+      })),
     );
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ message: 'Error al obtener presupuestos' });
+    return res.status(500).json({ message: "Error al obtener presupuestos" });
   }
 };
 
 export const obtenerPresupuestoPorId = async (req: Request, res: Response) => {
   const idPresupuesto = Number(req.params.idPresupuesto);
   try {
-    const presupuestoResult= await db.query(
+    const presupuestoResult = await db.query(
       `SELECT id as idpresupuesto,fecha_creacion, estado, monto_total
        FROM presupuestos
        WHERE id = $1`,
-      [idPresupuesto]
+      [idPresupuesto],
     );
 
     if (presupuestoResult.rows.length === 0) {
       return res.status(404).json({ message: "Presupuesto no encontrado" });
     }
     const detallesResult = await db.query(
-        `
+      `
         SELECT
         dp.iddetallepresupuesto,
         p.nombre AS nombre_producto,
@@ -67,12 +67,14 @@ export const obtenerPresupuestoPorId = async (req: Request, res: Response) => {
         JOIN productos p ON p.idproducto = dp.idproducto
         WHERE dp.idpresupuesto = $1
         `,
-        [idPresupuesto]
-      );
-      const montoTotal= detallesResult.rows.reduce(
-        (acc, item) => acc + Number(item.total_producto),
-        0
-      );
+      [idPresupuesto],
+    );
+    const montoTotal = detallesResult.rows.reduce(
+      (acc, item) => acc + Number(item.total_producto),
+      0,
+    );
+
+    console.log("Detalles del presupuesto:", detallesResult.rows);
 
     return res.status(200).json({
       idPresupuesto,
@@ -105,10 +107,12 @@ export const obtenerPresupuestoPorUsuario = async (
        ORDER BY fecha_creacion DESC`,
       [idUsuario],
     );
-      return res.status(200).json(result.rows);
+    return res.status(200).json(result.rows);
   } catch (error) {
-      console.error("Error al obtener presupuestos:", error);
-      return res.status(404).json({ message: "No se encontraron presupuestos para este usuario" });
+    console.error("Error al obtener presupuestos:", error);
+    return res
+      .status(404)
+      .json({ message: "No se encontraron presupuestos para este usuario" });
   }
 };
 export const modificarPresupuesto = async (req: Request, res: Response) => {
@@ -125,7 +129,7 @@ export const modificarPresupuesto = async (req: Request, res: Response) => {
        SET estado = $1
        WHERE id = $2
        RETURNING *`,
-      [estado, idPresupuesto]
+      [estado, idPresupuesto],
     );
 
     if (result.rowCount === 0) {
@@ -148,35 +152,55 @@ export const agregarPresupuesto = async (req: Request, res: Response) => {
     }
 
     if (!detalle || !Array.isArray(detalle) || detalle.length === 0) {
-      return res.status(400).json({ message: "El detalle del presupuesto es requerido y debe ser un array no vacío" });
+      return res.status(400).json({
+        message:
+          "El detalle del presupuesto es requerido y debe ser un array no vacío",
+      });
     }
-    const [result]: any =await sequelize.query(
+    const [result]: any = await sequelize.query(
       `INSERT INTO presupuestos( idusuario, estado)
       VALUES (:idUsuario, :estado)
       RETURNING id`,
       {
         replacements: { idUsuario, estado: estado || "Pendiente" },
-      }
+      },
     );
 
-   const idPresupuesto= result[0].id;
-   for (const item of detalle) {
-    if (!item.idProducto || !item.cantidad || item.cantidad <= 0) continue;
-    await sequelize.query(
-      `INSERT INTO detalles_presupuesto( idPresupuesto, idProducto, cantidad, precio)
-      VALUES (:idPresupuesto, :idProducto, :cantidad, :precio)`,
-      {
-        replacements: {
-          idPresupuesto,
-          idProducto: item.idProducto,
-          cantidad: item.cantidad,
-          precio: item.precio,
+    const idPresupuesto = result[0].id;
+    let montoTotal = 0;
+
+    for (const item of detalle) {
+      if (!item.idProducto || !item.cantidad || item.cantidad <= 0) continue;
+      await sequelize.query(
+        `INSERT INTO detalles_presupuesto( idPresupuesto, idProducto, cantidad, precio)
+        VALUES (:idPresupuesto, :idProducto, :cantidad, :precio)`,
+        {
+          replacements: {
+            idPresupuesto,
+            idProducto: item.idProducto,
+            cantidad: item.cantidad,
+            precio: item.precio,
+          },
         },
-      }
+      );
+      // Calcular el monto total sumando el precio total de cada detalle
+      montoTotal += item.cantidad * item.precio;
+    }
+
+    // Actualizar el monto_total en la tabla presupuestos
+    await sequelize.query(
+      `UPDATE presupuestos
+       SET monto_total = :montoTotal
+       WHERE id = :idPresupuesto`,
+      {
+        replacements: { montoTotal, idPresupuesto },
+      },
     );
-    return res.status(201).json({ message: "Presupuesto creado exitosamente", idPresupuesto });
-  }
-  }catch (error) {
+
+    return res
+      .status(201)
+      .json({ message: "Presupuesto creado exitosamente", idPresupuesto });
+  } catch (error) {
     console.error("Error al agregar el presupuesto:", error);
     return res.status(500).json({ message: "Error al agregar el presupuesto" });
   }
