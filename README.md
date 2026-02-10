@@ -1,4 +1,4 @@
-Proyecto final backend- Oleohidráulica Guardese.
+Proyecto final backend - Oleohidráulica Guardese
 
 Descripción del proyecto
 
@@ -10,7 +10,8 @@ Diagrama de la base de datos
 
 ---
 
-Deploy en Render 
+Deploy en Render
+
 - https://trabajo-final-backend-9l6v.onrender.com
 
  Configuración y Deploy (local)
@@ -23,6 +24,14 @@ Deploy en Render
     npm run insert-productos
     npm run build
     npm run start
+
+Tests
+
+    El proyecto incluye tests con Jest y Supertest para los controladores (auth, usuarios, productos, presupuestos, detallePresupuesto).
+
+    npm run test
+    npm run test:watch   # ejecuta tests en modo watch
+
 --- 
  Rutas principales
 
@@ -62,36 +71,36 @@ Deploy en Render
         PUT         /api/detallePresupuesto/:idDetalle
         DELETE      /api/detallePresupuesto/:idDetalle
 
-A continuación se adjunta un link de la colección en Postman para la prueba de rutas: 
-    https://www.postman.com/ds6666-7215/workspace/proyecto-final/collection/39847383-dc410020-40f8-499f-818b-73d89f90443b?action=share&creator=39847383
+Colección Postman (prueba de rutas)
 
-Contenido .env
+- [Colección Proyecto Final](https://www.postman.com/ds6666-7215/workspace/proyecto-final/collection/39847383-dc410020-40f8-499f-818b-73d89f90443b?action=share&creator=39847383)
 
-        # Configuraci n de Base de Datos - Render
-        DATABASE_URL=postgresql://oleohidraulica_db_user:VYyJCiqSOqbs8HYme4tnbVMKHdI4vGdN@dpg-d4j0h7emcj7s739f83b0-a.oregon-postgres.render.com/oleohidraulica_db
+Variables de entorno (.env)
 
-        # Variables individuales (por si no se usa DATABASE_URL)
-        DB_HOST=dpg-d4j0h7emcj7s739f83b0-a.oregon-postgres.render.com
+    Crear un archivo .env en la raíz del proyecto con las siguientes variables (usar valores propios; no subir credenciales al repositorio):
+
+        # Base de datos
+        DATABASE_URL=postgresql://usuario:contraseña@host:puerto/nombre_db
+        DB_HOST=tu_host
         DB_PORT=5432
-        DB_NAME=oleohidraulica_db
-        DB_USER=oleohidraulica_db_user
-        DB_PASS=VYyJCiqSOqbs8HYme4tnbVMKHdI4vGdN
+        DB_NAME=nombre_db
+        DB_USER=usuario
+        DB_PASS=contraseña
 
-        # JWT Secret
-        JWT_SECRET=ClaveAcceso
+        # JWT
+        JWT_SECRET=tu_clave_secreta
 
-        # Puerto del servidor
+        # Servidor
         PORT=3000
+        NODE_ENV=development
 
-        # Entorno
-        NODE_ENV=production
+Trello (división de tareas y cronograma)
 
-Manejo de tableros en Trello para la división de tareas. Cronograma/Sprint
 - https://trello.com/b/MuVdiLr8/mi-tablero-de-trello
 
-Integrantes del grupo:
+Integrantes del grupo
 
-    -Burgos, Belén.
-    -Guardese, Luciano.
-    -Hubert, Noelia.
-    -Ibañez, Ian Franco.
+- Burgos, Belén
+- Guardese, Luciano
+- Hubert, Noelia
+- Ibañez, Ian Franco
