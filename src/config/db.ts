@@ -4,29 +4,44 @@ import { Pool } from "pg";
 dotenv.config();
 
 let databaseUrl = process.env.DATABASE_URL;
-
-if (databaseUrl && databaseUrl.includes("render.com") && !databaseUrl.includes("sslmode=")) {
-  databaseUrl += databaseUrl.includes("?") ? "&sslmode=require" : "?sslmode=require";
+// Render (y pg v9+): usar verify-full para evitar el warning de seguridad.
+// Si usás Internal Database URL en Render, no agregamos sslmode (conexión interna).
+const isRenderExternal =
+  databaseUrl &&
+  databaseUrl.includes("render.com") &&
+  !databaseUrl.includes("internal") &&
+  !databaseUrl.includes("sslmode=");
+if (isRenderExternal && databaseUrl) {
+  databaseUrl += databaseUrl.includes("?") ? "&sslmode=verify-full" : "?sslmode=verify-full";
 }
 
 // Sequelize para la conexion a la base de datos
 let sequelize: Sequelize;
 
 if (databaseUrl) {
+  const useSsl =
+    databaseUrl.includes("sslmode=") ||
+    (databaseUrl.includes("render.com") && !databaseUrl.includes("internal"));
   sequelize = new Sequelize(databaseUrl, {
     dialect: "postgres",
     logging: false,
     dialectOptions: {
-      ssl:
-        databaseUrl.includes("sslmode=require") || databaseUrl.includes("render.com")
-          ? { require: true, rejectUnauthorized: false }
-          : false,
+      ssl: useSsl ? { require: true, rejectUnauthorized: false } : false,
     },
     pool: {
       max: 10,
       min: 0,
       acquire: 10000,
       idle: 10000,
+    },
+    retry: {
+      max: 3,
+      match: [
+        /Connection terminated unexpectedly/,
+        /Connection refused/,
+        /timeout/,
+        /ECONNRESET/,
+      ],
     },
   });
 } else {
@@ -45,14 +60,16 @@ if (databaseUrl) {
 
 export { sequelize };
 
+const poolSsl =
+  databaseUrl &&
+  (databaseUrl.includes("sslmode=") ||
+    (databaseUrl.includes("render.com") && !databaseUrl.includes("internal")));
+
 export const pool = new Pool({
   connectionString:
     databaseUrl ||
     `postgresql://${process.env.DB_USER}:${process.env.DB_PASS}@${process.env.DB_HOST}:${process.env.DB_PORT || 5432}/${process.env.DB_NAME}`,
-  ssl:
-    databaseUrl && (databaseUrl.includes("render.com") || databaseUrl.includes("sslmode=require"))
-      ? { rejectUnauthorized: false }
-      : false,
+  ssl: poolSsl ? { rejectUnauthorized: false } : false,
   max: 10,
   idleTimeoutMillis: 10000,
   connectionTimeoutMillis: 10000,

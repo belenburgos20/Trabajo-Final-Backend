@@ -24,7 +24,7 @@ Deploy en Render
    - **Runtime**: Node  
 
 3. **Variables de entorno** (en el servicio → Environment):  
-   - `DATABASE_URL`: URL de tu base PostgreSQL (en Render: crear PostgreSQL y copiar **Internal Database URL** o **External Database URL**).  
+   - `DATABASE_URL`: URL de tu base PostgreSQL. **Recomendado**: usar **Internal Database URL** (misma cuenta Render) para evitar "Connection terminated unexpectedly"; si usás External, la app agrega SSL automáticamente.  
    - `JWT_SECRET`: una clave secreta (ej. string aleatorio largo).  
    - No hace falta definir `PORT`; Render la asigna.  
 
