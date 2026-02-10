@@ -129,5 +129,5 @@ const insertProductos = async () => {
     }
 };
 
-// insertProductos();
+insertProductos();
 
