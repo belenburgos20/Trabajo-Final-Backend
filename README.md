@@ -14,7 +14,13 @@ Deploy en Render
 
 - https://trabajo-final-backend-9l6v.onrender.com
 
- Configuración y Deploy (local)
+    En Render (Web Service): conectar el repo, luego configurar:
+    - Build Command:  npm install && npm run build
+    - Start Command:  npm run start
+    - Variables de entorno: DATABASE_URL (o DB_*), JWT_SECRET, PORT (opcional; Render lo asigna).
+    Si la base de datos es nueva, ejecutar una vez desde Render Shell: npm run create-tables y npm run insert-productos.
+
+Configuración y Deploy (local)
 
     git clone https://github.com/belenburgos20/Trabajo-Final-Backend.git
     cd Trabajo-Final-Backend
