@@ -5,8 +5,7 @@ import { detallePresupuesto } from "../models/detallePresupuesto.models";
 import { ObtenerPresupuestos } from "../services/presupuesto.service";
 import { obtenerDetallesPresupuesto } from "../services/detallePresupuesto.service";
 import { pool } from "../config/db";
-import puppeteer from "puppeteer";
-import fs from "fs";
+import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 
 let presupuestos: Presupuesto[] = [];
 let idPresupuestoActual = 1;
@@ -346,236 +345,114 @@ export const generarPDFPresupuesto = async (req: Request, res: Response) => {
 
     console.log("Datos del presupuesto procesados:", presupuesto);
 
-    // Generar HTML para el PDF
-    const htmlContent = `
-      <html>
-      <head>
-        <meta charset="UTF-8" />
-        
-      </head>
-      <style>
-        body {
-          font-family: "Arial", sans-serif;
-          margin: 45px;
-          color: #2b2b2b;
-          font-size: 14px;
-        }
+    // Generar PDF con pdf-lib (compatible con Render, sin Puppeteer/Chrome)
+    const pdfDoc = await PDFDocument.create();
+    const page = pdfDoc.addPage([595, 842]); // A4
+    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+    const margin = 50;
+    const pageWidth = 595;
+    let y = 800;
+    const lineHeight = 16;
+    const purple = rgb(0.29, 0.17, 0.51);
 
-        .top {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-          padding-bottom: 15px;
-          border-bottom: 3px solid #4b2c82;
-          margin-bottom: 25px;
-        }
+    const drawText = (
+      text: string,
+      opts: { x?: number; y?: number; size?: number; bold?: boolean } = {},
+    ) => {
+      const x = opts.x ?? margin;
+      const size = opts.size ?? 12;
+      const f = opts.bold ? fontBold : font;
+      page.drawText(text, {
+        x,
+        y: opts.y ?? y,
+        size,
+        font: f,
+        color: rgb(0.17, 0.17, 0.17),
+      });
+      if (opts.y == null) y -= lineHeight;
+    };
 
-        .titulo {
-          font-size: 30px;
-          font-weight: 700;
-          letter-spacing: 1px;
-          color: #4b2c82;
-        }
+    // Título y empresa
+    page.drawText("PRESUPUESTO", { x: margin, y, size: 22, font: fontBold, color: purple });
+    y -= 20;
+    page.drawText("Oleohidráulica Guardese", { x: margin, y, size: 10, font });
+    y -= 12;
+    page.drawText("Bravard 1469 – Bahía Blanca | Tel: 0291 517-1986 | claudioguardes@hotmail.com", {
+      x: margin,
+      y,
+      size: 9,
+      font,
+    });
+    y -= 25;
 
-        .empresa {
-          margin-top: 8px;
-          font-size: 13px;
-          line-height: 1.6;
-          color: #555;
-        }
+    // Línea separadora
+    page.drawLine({
+      start: { x: margin, y },
+      end: { x: pageWidth - margin, y },
+      thickness: 2,
+      color: purple,
+    });
+    y -= 25;
 
-        .logo {
-          width: 130px;
-          object-fit: contain;
-        }
-        .bloque {
-          display: flex;
-          justify-content: space-between;
-          gap: 20px;
-          background: #f6f6f9;
-          border-left: 5px solid #4b2c82;
-          padding: 18px;
-          margin-top: 30px;
-          border-radius: 6px;
-        }
+    // Bloque Cliente / N° Presupuesto
+    page.drawText("Cliente", { x: margin, y, size: 11, font: fontBold, color: purple });
+    y -= 14;
+    drawText(presupuesto.cliente.nombre);
+    drawText(presupuesto.cliente.direccion || "");
+    drawText(`Tel: ${presupuesto.cliente.telefono || ""}`);
+    drawText(presupuesto.cliente.email || "");
+    y -= 10;
+    page.drawText("N° de Presupuesto", { x: 320, y: y + 10 + 4 * lineHeight, size: 11, font: fontBold, color: purple });
+    page.drawText(String(presupuesto.idPresupuesto), { x: 320, y: y + 10 + 3 * lineHeight, size: 12, font });
+    page.drawText(`Fecha: ${String(presupuesto.fecha).slice(0, 10)}`, {
+      x: 320,
+      y: y + 10 + 2 * lineHeight,
+      size: 10,
+      font,
+    });
+    y -= 20;
 
-        .bloque > div {
-          width: 50%;
-          font-size: 14px;
-          line-height: 1.6;
-        }
+    // Encabezado tabla
+    const colPos = { pos: margin, desc: margin + 40, cant: 380, precio: 430, importe: 500 };
+    page.drawRectangle({
+      x: margin,
+      y: y - 8,
+      width: pageWidth - 2 * margin,
+      height: 22,
+      color: purple,
+    });
+    page.drawText("Pos.", { x: colPos.pos, y: y, size: 9, font: fontBold, color: rgb(1, 1, 1) });
+    page.drawText("Descripción", { x: colPos.desc, y: y, size: 9, font: fontBold, color: rgb(1, 1, 1) });
+    page.drawText("Cant.", { x: colPos.cant, y: y, size: 9, font: fontBold, color: rgb(1, 1, 1) });
+    page.drawText("Precio Unit.", { x: colPos.precio, y: y, size: 9, font: fontBold, color: rgb(1, 1, 1) });
+    page.drawText("Importe", { x: colPos.importe, y: y, size: 9, font: fontBold, color: rgb(1, 1, 1) });
+    y -= 28;
 
-        .bloque h3 {
-          margin: 0 0 8px 0;
-          font-size: 15px;
-          color: #4b2c82;
-        }
+    presupuesto.detalle.forEach((item, index) => {
+      page.drawText(String(index + 1), { x: colPos.pos, y, size: 10, font });
+      const desc = item.nombreProducto.length > 28 ? item.nombreProducto.slice(0, 25) + "..." : item.nombreProducto;
+      page.drawText(desc, { x: colPos.desc, y, size: 10, font });
+      page.drawText(String(item.cantidad), { x: colPos.cant, y, size: 10, font });
+      page.drawText(`$${item.precioUnitario.toFixed(2)}`, { x: colPos.precio, y, size: 10, font });
+      page.drawText(`$${item.totalProducto.toFixed(2)}`, { x: colPos.importe, y, size: 10, font });
+      y -= lineHeight;
+    });
 
-        table {
-          width: 100%;
-          border-collapse: collapse;
-          margin-top: 35px;
-        }
+    y -= 15;
+    page.drawText("IMPORTE TOTAL", { x: margin, y, size: 12, font: fontBold, color: purple });
+    page.drawText(`$${presupuesto.montoTotal.toFixed(2)}`, { x: colPos.importe, y, size: 12, font: fontBold });
+    y -= 30;
+    page.drawText("Atentamente, Oleohidráulica Guardese", { x: margin, y, size: 10, font });
 
-        thead th {
-          background: #4b2c82;
-          color: #fff;
-          padding: 10px;
-          font-size: 13px;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-        }
+    const pdfBytes = await pdfDoc.save();
 
-        tbody td {
-          padding: 10px;
-          border-bottom: 1px solid #ddd;
-          font-size: 14px;
-        }
-
-        tbody tr:nth-child(even) {
-          background-color: #fafafa;
-        }
-
-        .right {
-          text-align: right;
-        }
-
-        .totales {
-          display: flex;
-          justify-content: flex-end;
-          margin-top: 25px;
-        }
-
-        .totales table {
-          width: 45%;
-          border: 2px solid #4b2c82;
-          border-radius: 6px;
-          overflow: hidden;
-        }
-
-        .totales th {
-          background: #f1eef9;
-          padding: 12px;
-          font-size: 15px;
-          text-align: left;
-          color: #4b2c82;
-        }
-
-        .totales td {
-          padding: 12px;
-          font-size: 16px;
-          font-weight: bold;
-          text-align: right;
-        }
-        .footer {
-          margin-top: 45px;
-          font-size: 13px;
-          color: #555;
-          line-height: 1.8;
-        }
-      </style>
-      <body>
-        <!-- Encabezado -->
-        <div class="top">
-          <div>
-            <div class="titulo">PRESUPUESTO</div>
-            <div class="empresa">
-              Oleohidráulica Guardese<br />
-              Bravard 1469 – Bahía Blanca<br />
-              Tel: 0291 517-1986<br />
-              claudioguardes@hotmail.com
-            </div>
-          </div>
-
-          <img
-            src="https://res.cloudinary.com/dzj8q3l6n/image/upload/v1700000000/guardese-logo.png"
-            class="logo"
-          />
-        </div>
-
-        <!-- Cliente / Presupuesto -->
-        <div class="bloque">
-          <div>
-            <h3>Cliente</h3>
-            ${presupuesto.cliente.nombre}<br />
-            ${presupuesto.cliente.direccion}<br />
-            Tel: ${presupuesto.cliente.telefono}<br />
-            ${presupuesto.cliente.email}
-          </div>
-
-          <div>
-            <h3>N° de Presupuesto</h3>
-            ${presupuesto.idPresupuesto}<br /><br />
-            <strong>Fecha:</strong> ${presupuesto.fecha}
-          </div>
-        </div>
-
-        <!-- Tabla -->
-        <table>
-          <thead>
-            <tr>
-              <th>Pos.</th>
-              <th>Descripción</th>
-              <th>Cant.</th>
-              <th>Precio Unit.</th>
-              <th>Importe</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${presupuesto.detalle.map((item, index) => `
-              <tr>
-                <td>${index + 1}</td>
-                <td>${item.nombreProducto}</td>
-                <td class="right">${item.cantidad}</td>
-                <td class="right">$${item.precioUnitario.toFixed(2)}</td>
-                <td class="right">$${item.totalProducto.toFixed(2)}</td>
-              </tr>
-            `).join("")}
-          </tbody>
-        </table>
-
-        <!-- Totales -->
-        <div class="totales">
-          <table>
-            <tr>
-              <th>IMPORTE TOTAL</th>
-              <th class="right">$${presupuesto.montoTotal.toFixed(2)}</th>
-            </tr>
-          </table>
-        </div>
-
-        <div class="footer">
-          Atentamente,<br />
-          Oleohidráulica Guardese
-        </div>
-      </body>
-      </html>
-    `;
-
-    console.log("HTML generado para el PDF:", htmlContent);
-
-    // Generar el PDF con Puppeteer
-    const browser = await puppeteer.launch();
-    const page = await browser.newPage();
-    await page.setContent(htmlContent);
-    const pdfBuffer = await page.pdf({ format: "A4" });
-    await browser.close();
-
-    console.log("PDF generado correctamente");
-
-    // Guardar el PDF generado en el servidor para depuración
-    const fs = require("fs");
-    const filePath = `./presupuesto_${idPresupuesto}.pdf`;
-    fs.writeFileSync(filePath, pdfBuffer);
-    console.log(`PDF guardado en el servidor: ${filePath}`);
-
-    // Configurar la respuesta
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(
       "Content-Disposition",
       `attachment; filename=presupuesto_${idPresupuesto}.pdf`,
     );
-    res.send(Buffer.from(pdfBuffer));
+    res.send(Buffer.from(pdfBytes));
   } catch (error) {
     console.error("Error al generar el PDF del presupuesto:", error);
     return res.status(500).json({ message: "Error al generar el PDF" });
