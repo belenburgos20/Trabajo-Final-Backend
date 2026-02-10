@@ -3,7 +3,11 @@ import dotenv from "dotenv";
 import { Pool } from "pg";
 dotenv.config();
 
-const databaseUrl = process.env.DATABASE_URL;
+let databaseUrl = process.env.DATABASE_URL;
+
+if (databaseUrl && databaseUrl.includes("render.com") && !databaseUrl.includes("sslmode=")) {
+  databaseUrl += databaseUrl.includes("?") ? "&sslmode=require" : "?sslmode=require";
+}
 
 // Sequelize para la conexion a la base de datos
 let sequelize: Sequelize;
@@ -13,10 +17,16 @@ if (databaseUrl) {
     dialect: "postgres",
     logging: false,
     dialectOptions: {
-      ssl: {
-        require: true,
-        rejectUnauthorized: false,
-      },
+      ssl:
+        databaseUrl.includes("sslmode=require") || databaseUrl.includes("render.com")
+          ? { require: true, rejectUnauthorized: false }
+          : false,
+    },
+    pool: {
+      max: 10,
+      min: 0,
+      acquire: 10000,
+      idle: 10000,
     },
   });
 } else {
@@ -39,13 +49,12 @@ export const pool = new Pool({
   connectionString:
     databaseUrl ||
     `postgresql://${process.env.DB_USER}:${process.env.DB_PASS}@${process.env.DB_HOST}:${process.env.DB_PORT || 5432}/${process.env.DB_NAME}`,
-  ssl: databaseUrl
-    ? {
-        rejectUnauthorized: false,
-      }
-    : false,
-  max: 20,
-  idleTimeoutMillis: 30000,
+  ssl:
+    databaseUrl && (databaseUrl.includes("render.com") || databaseUrl.includes("sslmode=require"))
+      ? { rejectUnauthorized: false }
+      : false,
+  max: 10,
+  idleTimeoutMillis: 10000,
   connectionTimeoutMillis: 10000,
 });
 
