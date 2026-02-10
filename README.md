@@ -12,9 +12,38 @@ Diagrama de la base de datos
 
 Deploy en Render
 
-- https://trabajo-final-backend-9l6v.onrender.com
+1. **Subir el código**  
+   Subí el backend a un repo en GitHub (si no está ya).
 
- Configuración y Deploy (local)
+2. **En Render**  
+   - Entrá a [dashboard.render.com](https://dashboard.render.com) → **New** → **Web Service**.  
+   - Conectá el repositorio de GitHub y seleccioná el repo del backend.  
+   - **Root Directory**: si el backend está en una carpeta (ej. `Trabajo-Final-Backend`), indicá esa carpeta.  
+   - **Build Command**: `npm install && npm run build`  
+   - **Start Command**: `npm run start`  
+   - **Runtime**: Node  
+
+3. **Variables de entorno** (en el servicio → Environment):  
+   - `DATABASE_URL`: URL de tu base PostgreSQL (en Render: crear PostgreSQL y copiar **Internal Database URL** o **External Database URL**).  
+   - `JWT_SECRET`: una clave secreta (ej. string aleatorio largo).  
+   - No hace falta definir `PORT`; Render la asigna.  
+
+4. **Crear el servicio**  
+   Deploy automático. Cuando termine, tendrás una URL tipo `https://tu-nombre.onrender.com`.  
+
+5. **Si la base está vacía**  
+   En el Web Service → **Shell**:  
+   `npm run create-tables`  
+   `npm run insert-productos`  
+
+6. **Probar**  
+   `GET https://tu-url.onrender.com/` debe responder con `{"message":"Servidor funcionando correctamente."}`.
+
+- Ejemplo de URL: https://trabajo-final-backend-9l6v.onrender.com
+
+---
+
+Configuración y Deploy (local)
 
     git clone https://github.com/belenburgos20/Trabajo-Final-Backend.git
     cd Trabajo-Final-Backend

@@ -1,0 +1,20 @@
+# Render Blueprint - Web Service
+# https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: trabajo-final-backend
+    runtime: node
+    region: oregon
+
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+
+    # Health check: Render hace GET a / cada cierto tiempo
+    healthCheckPath: /
+
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Añadir en el Dashboard de Render:
+      # - DATABASE_URL (desde la PostgreSQL database conectada, o manual)
+      # - JWT_SECRET
