@@ -173,6 +173,7 @@ export const agregarPresupuesto = async (req: Request, res: Response) => {
 
     for (const item of detalle) {
       if (!item.idProducto || !item.cantidad || item.cantidad <= 0) continue;
+      const precio = Number(item.precio ?? item.precioUnitario ?? 0) || 0;
       await sequelize.query(
         `INSERT INTO detalles_presupuesto( idPresupuesto, idProducto, cantidad, precio)
         VALUES (:idPresupuesto, :idProducto, :cantidad, :precio)`,
@@ -181,12 +182,11 @@ export const agregarPresupuesto = async (req: Request, res: Response) => {
             idPresupuesto,
             idProducto: item.idProducto,
             cantidad: item.cantidad,
-            precio: item.precio,
+            precio,
           },
         },
       );
-      // Calcular el monto total sumando el precio total de cada detalle
-      montoTotal += item.cantidad * item.precio;
+      montoTotal += item.cantidad * precio;
     }
 
     // Actualizar el monto_total en la tabla presupuestos
